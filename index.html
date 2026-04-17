@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ČNB ARAD Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e1a; --surface: #111827; --surface2: #1a2234;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf0; --text2: #8892a4; --text3: #4a5568;
+    --accent: #3b82f6; --accent2: #60a5fa;
+    --green: #10b981; --red: #ef4444; --amber: #f59e0b;
+    --mono: 'IBM Plex Mono', monospace; --sans: 'IBM Plex Sans', sans-serif;
+  }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+  .header { border-bottom: 1px solid var(--border); padding: 18px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--bg); z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 30px; height: 30px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 11px; font-weight: 500; color: white; }
+  .header h1 { font-size: 14px; font-weight: 500; }
+  .status-pill { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); }
+  .status-dot.ok { background: var(--green); animation: pulse 2s infinite; }
+  .status-dot.loading { background: var(--amber); animation: pulse 0.8s infinite; }
+  .status-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .status-text { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+
+  .main { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 61px); }
+
+  .sidebar { border-right: 1px solid var(--border); padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+  .sidebar-section h3 { font-size: 10px; font-weight: 500; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+
+  .field-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .field { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: var(--text); font-family: var(--mono); font-size: 11px; width: 100%; }
+  .field:focus { outline: none; border-color: var(--accent); }
+  .field-note { font-size: 10px; color: var(--text3); margin-top: 3px; line-height: 1.4; }
+
+  .indicator-list { display: flex; flex-direction: column; gap: 5px; }
+  .ind-btn { background: none; border: 1px solid var(--border); border-radius: 7px; padding: 9px 11px; cursor: pointer; text-align: left; color: var(--text2); font-family: var(--sans); font-size: 12px; transition: all 0.12s; display: flex; align-items: center; gap: 8px; width: 100%; }
+  .ind-btn:hover { border-color: var(--border2); color: var(--text); background: var(--surface); }
+  .ind-btn.active { border-color: var(--accent); color: var(--text); background: rgba(59,130,246,0.1); }
+  .ind-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .ind-btn.active .ind-dot { background: var(--accent2); }
+
+  .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .load-btn { background: var(--accent); border: none; border-radius: 7px; padding: 10px; color: white; font-family: var(--sans); font-size: 13px; font-weight: 500; cursor: pointer; width: 100%; transition: all 0.12s; }
+  .load-btn:hover { background: #2563eb; }
+  .load-btn:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; }
+
+  .content { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+
+  .page-title { font-size: 17px; font-weight: 400; color: var(--text); }
+  .page-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+  .metrics-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 14px 16px; }
+  .metric-label { font-size: 10px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.06em; }
+  .metric-value { font-size: 24px; font-weight: 300; font-family: var(--mono); color: var(--text); letter-spacing: -0.02em; margin-top: 2px; }
+  .metric-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+  .badge { font-size: 11px; font-family: var(--mono); padding: 2px 6px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+  .badge.up { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge.neutral { background: rgba(255,255,255,0.05); color: var(--text2); }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 18px 20px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .panel-title { font-size: 13px; font-weight: 500; color: var(--text); }
+  .panel-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .chart-wrap { position: relative; height: 220px; }
+
+  .ai-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+  .ai-head { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+  .ai-icon { width: 22px; height: 22px; background: linear-gradient(135deg, #7c3aed, #3b82f6); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; }
+  .ai-title { font-size: 13px; font-weight: 500; }
+  .ai-model { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-left: auto; }
+  .ai-body { padding: 18px 20px; }
+  .ai-text { font-size: 13px; color: var(--text2); line-height: 1.8; }
+  .ai-text p + p { margin-top: 10px; }
+  .ai-btn { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); border-radius: 6px; padding: 7px 14px; color: var(--accent2); font-family: var(--sans); font-size: 12px; cursor: pointer; margin-top: 12px; transition: all 0.12s; }
+  .ai-btn:hover { background: rgba(59,130,246,0.18); }
+  .ai-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .spinner { display: flex; gap: 3px; align-items: center; }
+  .spinner span { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: bounce 1.2s infinite; }
+  .spinner span:nth-child(2) { animation-delay: 0.2s; }
+  .spinner span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+  .tbl-wrap { overflow-x: auto; max-height: 260px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  th { background: var(--surface2); padding: 7px 12px; text-align: left; color: var(--text3); border-bottom: 1px solid var(--border); position: sticky; top: 0; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; white-space: nowrap; }
+  td { padding: 6px 12px; color: var(--text2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tr:hover td { background: var(--surface2); color: var(--text); }
+
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; color: var(--text3); text-align: center; gap: 10px; }
+  .empty-icon { font-size: 28px; opacity: 0.25; }
+  .empty-title { font-size: 14px; font-weight: 500; color: var(--text2); }
+  .empty-sub { font-size: 13px; max-width: 280px; }
+
+  .error-box { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.18); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #fca5a5; }
+
+  .custom-row { display: flex; gap: 6px; margin-top: 8px; }
+  .custom-row input { flex: 1; }
+  .custom-row button { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; color: var(--text2); font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .custom-row button:hover { color: var(--text); border-color: var(--border2); }
+
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark">ČNB</div>
+    <h1>ARAD Dashboard</h1>
+  </div>
+  <div class="status-pill">
+    <div class="status-dot" id="sDot"></div>
+    <span class="status-text" id="sText">připraven</span>
+  </div>
+</header>
+
+<div class="main">
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <h3>Konfigurace</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div>
+          <div class="field-label">Backend URL</div>
+          <input class="field" id="backendUrl" value="https://TVUJ-APP.onrender.com" placeholder="https://...onrender.com">
+          <div class="field-note">Adresa tvého Render backendu</div>
+        </div>
+        <div>
+          <div class="field-label">ČNB ARAD klíč</div>
+          <input class="field" id="aradKey" value="202617041246038223778223777SYSHWLM6QBS3JAI">
+        </div>
+        <div>
+          <div class="field-label">Anthropic klíč (pro komentáře)</div>
+          <input class="field" id="claudeKey" type="password" placeholder="sk-ant-...">
+          <div class="field-note">Posílá se přes tvůj backend, ne přímo.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Ukazatel</h3>
+      <div class="indicator-list" id="indList">
+        <button class="ind-btn active" data-id="BANKA_ROE" data-name="ROE bank" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROE bank</button>
+        <button class="ind-btn" data-id="BANKA_ROA" data-name="ROA bank" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROA bank</button>
+        <button class="ind-btn" data-id="PRIBOR_3M" data-name="PRIBOR 3M" data-unit="% p.a." onclick="selectInd(this)"><span class="ind-dot"></span>PRIBOR 3M</button>
+        <button class="ind-btn" data-id="EURCZK_B" data-name="Kurz EUR/CZK" data-unit="CZK" onclick="selectInd(this)"><span class="ind-dot"></span>EUR/CZK</button>
+        <button class="ind-btn" data-id="CPIMOM12MDMD" data-name="Inflace CPI" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Inflace CPI</button>
+        <button class="ind-btn" data-id="BANKA_CAR" data-name="Kapitálová přiměřenost" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Kapitálová přiměřenost</button>
+        <button class="ind-btn" data-id="BANKA_NIM" data-name="Čistá úroková marže" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Úroková marže (NIM)</button>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
+        <div class="field-label">Přidat vlastní ID</div>
+        <div class="custom-row">
+          <input class="field" id="customId" placeholder="Kód z ARAD...">
+          <button onclick="addCustom()">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Období</h3>
+      <div class="date-row">
+        <div><div class="field-label">Od</div><input class="field" type="date" id="dateFrom" value="2019-01-01"></div>
+        <div><div class="field-label">Do</div><input class="field" type="date" id="dateTo" value="2025-12-31"></div>
+      </div>
+    </div>
+
+    <button class="load-btn" id="loadBtn" onclick="loadData()">Načíst data</button>
+
+  </aside>
+
+  <main class="content" id="content">
+    <div class="empty">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">Vyber ukazatel a načti data</div>
+      <div class="empty-sub">Nejdřív nastav URL svého Render backendu nahoře vlevo</div>
+    </div>
+  </main>
+</div>
+
+<script>
+const INDICATOR_MAP = {
+  'BANKA_ROE':    'BANKA_SROEQ',
+  'BANKA_ROA':    'BANKA_SROAQ',
+  'PRIBOR_3M':    'PRIB3MSD',
+  'EURCZK_B':     'EURCZK_B',
+  'CPIMOM12MDMD': 'CPIMOM12MDMD',
+  'BANKA_CAR':    'BANKA_SCARQ',
+  'BANKA_NIM':    'BANKA_SNIMQ',
+};
+
+let current = { id: 'BANKA_ROE', name: 'ROE bank', unit: '%' };
+let chartInst = null;
+let lastData = null;
+
+function selectInd(btn) {
+  document.querySelectorAll('.ind-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  current = { id: btn.dataset.id, name: btn.dataset.name, unit: btn.dataset.unit };
+}
+
+function addCustom() {
+  const id = document.getElementById('customId').value.trim();
+  if (!id) return;
+  const list = document.getElementById('indList');
+  const btn = document.createElement('button');
+  btn.className = 'ind-btn';
+  btn.dataset.id = id;
+  btn.dataset.name = id;
+  btn.dataset.unit = '';
+  btn.setAttribute('onclick', 'selectInd(this)');
+  btn.innerHTML = `<span class="ind-dot"></span>${id}`;
+  list.appendChild(btn);
+  INDICATOR_MAP[id] = id;
+  document.getElementById('customId').value = '';
+}
+
+function setStatus(type, text) {
+  const dot = document.getElementById('sDot');
+  document.getElementById('sText').textContent = text;
+  dot.className = 'status-dot ' + (type || '');
+}
+
+async function loadData() {
+  const backend = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+  const aradKey = document.getElementById('aradKey').value.trim();
+  if (!backend || backend.includes('TVUJ-APP')) {
+    showError('Nastav URL svého Render backendu (pole nahoře vlevo)');
+    return;
+  }
+  if (!aradKey) { showError('Zadej ARAD API klíč'); return; }
+
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true; btn.textContent = 'Načítám...';
+  setStatus('loading', 'načítám...');
+
+  const realId = INDICATOR_MAP[current.id] || current.id;
+  const from = document.getElementById('dateFrom').value.replace(/-/g, '');
+  const to = document.getElementById('dateTo').value.replace(/-/g, '');
+
+  const url = `${backend}/api/data?indicator_id_list=${realId}&period_from=${from}&period_to=${to}&api_key=${encodeURIComponent(aradKey)}`;
+
+  try {
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (!resp.ok || !json.ok) throw new Error(json.detail || 'Chyba serveru');
+
+    lastData = { rows: json.data, name: current.name, unit: current.unit, realId };
+    render(json.data, current.name, current.unit, realId);
+    setStatus('ok', `${json.data.length} řádků`);
+  } catch (err) {
+    showError(err.message);
+    setStatus('error', 'chyba');
+  }
+
+  btn.disabled = false; btn.textContent = 'Načíst data';
+}
+
+function render(rows, name, unit, realId) {
+  if (!rows.length) { showError('Žádná data pro toto období'); return; }
+
+  const periodKey = Object.keys(rows[0])[0];
+  const valueKey = Object.keys(rows[0])[1];
+
+  const vals = rows.map(r => { const v = parseFloat(r[valueKey]?.replace(',','.')); return isNaN(v) ? null : v; });
+  const periods = rows.map(r => r[periodKey]);
+  const clean = vals.filter(v => v !== null);
+  if (!clean.length) { showError('Data neobsahují číselné hodnoty'); return; }
+
+  const last = clean[clean.length - 1];
+  const prev = clean[clean.length - 2];
+  const min = Math.min(...clean), max = Math.max(...clean);
+  const avg = clean.reduce((a,b) => a+b,0) / clean.length;
+  const chg = prev ? (last - prev) / Math.abs(prev) * 100 : 0;
+  const chgClass = chg > 0.05 ? 'up' : chg < -0.05 ? 'down' : 'neutral';
+  const chgStr = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+
+  const skip = Math.ceil(periods.length / 20);
+  const lbls = periods.map((p, i) => i % skip === 0 ? fmtPeriod(p) : '');
+
+  document.getElementById('content').innerHTML = `
+    <div>
+      <div class="page-title">${name}</div>
+      <div class="page-meta">ID: ${realId} &nbsp;·&nbsp; ${rows.length} pozorování &nbsp;·&nbsp; ${periods[0]} → ${periods[periods.length-1]}</div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric">
+        <div class="metric-label">Poslední hodnota</div>
+        <div class="metric-value">${fmt(last)}</div>
+        <div class="metric-sub">${unit} · ${periods[periods.length-1]}</div>
+        <div class="badge ${chgClass}">${chgStr} vs předchozí</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Průměr</div>
+        <div class="metric-value">${fmt(avg)}</div>
+        <div class="metric-sub">${unit} · celé období</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Minimum</div>
+        <div class="metric-value">${fmt(min)}</div>
+        <div class="metric-sub">${unit}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Maximum</div>
+        <div class="metric-value">${fmt(max)}</div>
+        <div class="metric-sub">${unit}</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Časová řada</div>
+        <div class="panel-meta">${periods[0]} → ${periods[periods.length-1]}</div>
+      </div>
+      <div class="chart-wrap"><canvas id="chart" role="img" aria-label="Časová řada ${name}"></canvas></div>
+    </div>
+
+    <div class="ai-panel">
+      <div class="ai-head">
+        <div class="ai-icon">✦</div>
+        <div class="ai-title">AI komentář</div>
+        <span class="ai-model">claude-sonnet-4</span>
+      </div>
+      <div class="ai-body" id="aiBody">
+        <div style="color:var(--text3);font-size:13px;">Zadej Anthropic API klíč vlevo a klikni na tlačítko níže.</div>
+        <button class="ai-btn" id="aiBtn" onclick="getComment()">Generovat komentář ✦</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">Zdrojová data</div>
+        <div class="panel-meta">${valueKey}</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Období</th><th>Hodnota (${unit})</th><th>Změna</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+  chartInst = new Chart(document.getElementById('chart'), {
+    type: 'line',
+    data: {
+      labels: lbls,
+      datasets: [{ data: vals, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)', fill: true, borderWidth: 1.5, pointRadius: vals.length > 60 ? 0 : 3, pointHoverRadius: 5, tension: 0.3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1a2234', borderColor: 'rgba(255,255,255,0.08)', borderWidth: 1, titleColor: '#8892a4', bodyColor: '#e8eaf0', callbacks: { title: items => periods[items[0].dataIndex], label: item => ` ${item.raw?.toLocaleString('cs-CZ',{maximumFractionDigits:4})} ${unit}` } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#4a5568', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => fmt(v) + ' ' + unit } }
+      }
+    }
+  });
+
+  const tbody = document.getElementById('tbody');
+  [...rows].reverse().slice(0, 80).forEach((row, i, arr) => {
+    const v = parseFloat(row[valueKey]?.replace(',', '.'));
+    const pv = i < arr.length - 1 ? parseFloat(arr[i+1][valueKey]?.replace(',','.')) : null;
+    const d = pv !== null ? v - pv : null;
+    const dc = d > 0 ? 'var(--green)' : d < 0 ? 'var(--red)' : 'var(--text3)';
+    tbody.innerHTML += `<tr><td>${row[periodKey]}</td><td>${isNaN(v) ? row[valueKey] : v.toLocaleString('cs-CZ',{maximumFractionDigits:4})}</td><td style="color:${dc};font-size:10px">${d !== null ? (d>=0?'+':'')+d.toFixed(4) : '—'}</td></tr>`;
+  });
+}
+
+async function getComment() {
+  const claudeKey = document.getElementById('claudeKey').value.trim();
+  const backend = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
+  if (!claudeKey) { document.getElementById('aiBody').innerHTML = `<div class="error-box">Zadej Anthropic API klíč vlevo (sk-ant-...)</div><button class="ai-btn" onclick="getComment()">Zkusit znovu</button>`; return; }
+  if (!lastData) return;
+
+  const { rows, name, unit, realId } = lastData;
+  const periodKey = Object.keys(rows[0])[0];
+  const valueKey = Object.keys(rows[0])[1];
+  const vals = rows.map(r => parseFloat(r[valueKey]?.replace(',','.'))).filter(v => !isNaN(v));
+  const periods = rows.map(r => r[periodKey]);
+  const sample = rows.slice(-12).map(r => `${r[periodKey]}: ${r[valueKey]}`).join(', ');
+
+  document.getElementById('aiBtn').disabled = true;
+  document.getElementById('aiBody').innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--text3);font-size:13px;"><div class="spinner"><span></span><span></span><span></span></div>Generuji komentář...</div>`;
+
+  try {
+    const resp = await fetch(`${backend}/api/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        claude_key: claudeKey,
+        name, unit, real_id: realId,
+        period_from: periods[0], period_to: periods[periods.length-1],
+        obs_count: vals.length,
+        first_value: vals[0]?.toFixed(4),
+        last_value: vals[vals.length-1]?.toFixed(4),
+        min_value: Math.min(...vals).toFixed(4),
+        max_value: Math.max(...vals).toFixed(4),
+        avg_value: (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(4),
+        sample
+      })
+    });
+    const json = await resp.json();
+    if (!resp.ok) throw new Error(json.detail || 'Chyba');
+    const paras = json.comment.split('\n\n').filter(p=>p.trim()).map(p=>`<p>${p.trim()}</p>`).join('');
+    document.getElementById('aiBody').innerHTML = `<div class="ai-text">${paras}</div><button class="ai-btn" onclick="getComment()">Obnovit ↺</button>`;
+  } catch (err) {
+    document.getElementById('aiBody').innerHTML = `<div class="error-box">${err.message}</div><button class="ai-btn" onclick="getComment()">Zkusit znovu</button>`;
+  }
+}
+
+function fmt(v) { return v?.toLocaleString('cs-CZ', { maximumFractionDigits: 3 }) ?? '—'; }
+function fmtPeriod(p) {
+  if (!p) return p;
+  if (p.length === 8) return `${p.slice(6)}.${p.slice(4,6)}.${p.slice(0,4)}`;
+  if (p.length === 6) return `${p.slice(4,6)}/${p.slice(0,4)}`;
+  return p;
+}
+function showError(msg) { document.getElementById('content').innerHTML = `<div class="error-box">${msg}</div>`; }
+</script>
+</body>
+</html>
