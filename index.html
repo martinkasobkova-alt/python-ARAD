@@ -135,7 +135,7 @@
       <div style="display:flex;flex-direction:column;gap:8px;">
         <div>
           <div class="field-label">Backend URL</div>
-          <input class="field" id="backendUrl" value="https://TVUJ-APP.onrender.com" placeholder="https://...onrender.com">
+          <input class="field" id="backendUrl" value="https://python-arad.onrender.com" placeholder="https://...onrender.com">
           <div class="field-note">Adresa tvého Render backendu</div>
         </div>
         <div>
@@ -153,13 +153,12 @@
     <div class="sidebar-section">
       <h3>Ukazatel</h3>
       <div class="indicator-list" id="indList">
-        <button class="ind-btn active" data-id="BANKA_ROE" data-name="ROE bank" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROE bank</button>
-        <button class="ind-btn" data-id="BANKA_ROA" data-name="ROA bank" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROA bank</button>
-        <button class="ind-btn" data-id="PRIBOR_3M" data-name="PRIBOR 3M" data-unit="% p.a." onclick="selectInd(this)"><span class="ind-dot"></span>PRIBOR 3M</button>
-        <button class="ind-btn" data-id="EURCZK_B" data-name="Kurz EUR/CZK" data-unit="CZK" onclick="selectInd(this)"><span class="ind-dot"></span>EUR/CZK</button>
-        <button class="ind-btn" data-id="CPIMOM12MDMD" data-name="Inflace CPI" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Inflace CPI</button>
-        <button class="ind-btn" data-id="BANKA_CAR" data-name="Kapitálová přiměřenost" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Kapitálová přiměřenost</button>
-        <button class="ind-btn" data-id="BANKA_NIM" data-name="Čistá úroková marže" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>Úroková marže (NIM)</button>
+        <button class="ind-btn active" data-id="DBAPUQ104" data-name="ROE bank (Zisk / Tier 1)" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROE bank</button>
+        <button class="ind-btn" data-id="DBAPUQ101" data-name="ROA bank (Zisk / průměrná aktiva)" data-unit="%" onclick="selectInd(this)"><span class="ind-dot"></span>ROA bank</button>
+        <button class="ind-btn" data-id="DVYBAQ101" data-name="Zisk z finanční a provozní činnosti" data-unit="mil. CZK" onclick="selectInd(this)"><span class="ind-dot"></span>Zisk celkem</button>
+        <button class="ind-btn" data-id="DVYBAQ102" data-name="Úrokové výnosy" data-unit="mil. CZK" onclick="selectInd(this)"><span class="ind-dot"></span>Úrokové výnosy</button>
+        <button class="ind-btn" data-id="DVYBAQ103" data-name="Úrokové náklady" data-unit="mil. CZK" onclick="selectInd(this)"><span class="ind-dot"></span>Úrokové náklady</button>
+        <button class="ind-btn" data-id="DVYBAQ106" data-name="Výnosy z poplatků a provizí" data-unit="mil. CZK" onclick="selectInd(this)"><span class="ind-dot"></span>Výnosy z poplatků</button>
       </div>
       <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">
         <div class="field-label">Přidat vlastní ID</div>
@@ -186,23 +185,23 @@
     <div class="empty">
       <div class="empty-icon">📊</div>
       <div class="empty-title">Vyber ukazatel a načti data</div>
-      <div class="empty-sub">Nejdřív nastav URL svého Render backendu nahoře vlevo</div>
+      <div class="empty-sub">Vyber ukazatel vlevo a klikni na Načíst data</div>
     </div>
   </main>
 </div>
 
 <script>
 const INDICATOR_MAP = {
-  'BANKA_ROE':    'BANKA_SROEQ',
-  'BANKA_ROA':    'BANKA_SROAQ',
-  'PRIBOR_3M':    'PRIB3MSD',
-  'EURCZK_B':     'EURCZK_B',
-  'CPIMOM12MDMD': 'CPIMOM12MDMD',
-  'BANKA_CAR':    'BANKA_SCARQ',
-  'BANKA_NIM':    'BANKA_SNIMQ',
+  'DBAPUQ104': 'DBAPUQ104',
+  'DBAPUQ101': 'DBAPUQ101',
+  'DVYBAQ101': 'DVYBAQ101',
+  'DVYBAQ102': 'DVYBAQ102',
+  'DVYBAQ103': 'DVYBAQ103',
+  'DVYBAQ106': 'DVYBAQ106',
 };
 
-let current = { id: 'BANKA_ROE', name: 'ROE bank', unit: '%' };
+let current = { id: 'DBAPUQ104', name: 'ROE bank (Zisk / Tier 1)', unit: '%' };
+
 let chartInst = null;
 let lastData = null;
 
@@ -237,8 +236,8 @@ function setStatus(type, text) {
 async function loadData() {
   const backend = document.getElementById('backendUrl').value.trim().replace(/\/$/, '');
   const aradKey = document.getElementById('aradKey').value.trim();
-  if (!backend || backend.includes('TVUJ-APP')) {
-    showError('Nastav URL svého Render backendu (pole nahoře vlevo)');
+  if (!backend) {
+    showError('Zadej URL Render backendu');
     return;
   }
   if (!aradKey) { showError('Zadej ARAD API klíč'); return; }

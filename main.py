@@ -18,9 +18,16 @@ ARAD_BASE = "https://www.cnb.cz/aradb/api/v1"
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 
 
-@app.get("/")
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+@app.get("/", response_class=HTMLResponse)
 def root():
-    return {"status": "ok", "service": "ARAD Dashboard API"}
+    path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(path):
+        return open(path).read()
+    return HTMLResponse("<h1>ARAD API běží</h1>")
 
 
 @app.get("/api/arad/{endpoint}")
